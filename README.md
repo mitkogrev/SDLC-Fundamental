@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Task Manager — Full Stack Application
 
 A full-stack task management application built with **Spring Boot** on the backend and **React + TypeScript** on the frontend. Create, update, delete, and track tasks through a clean, responsive UI backed by a RESTful API.
@@ -356,3 +357,18 @@ cd frontend
 # Run ESLint
 npm run lint
 ```
+=======
+cd backend
+
+mvn spring-boot-run
+
+
+cd frontend
+
+npm i
+
+npm run dev
+
+
+http://localhost:5173/
+>>>>>>> bd370c8ca55c670ced5d9ce73012026afc6a39f4
