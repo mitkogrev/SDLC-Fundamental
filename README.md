@@ -19,6 +19,7 @@ A full-stack task management application built with **Spring Boot** on the backe
 - [Features](#features)
 - [Configuration](#configuration)
 - [Testing](#testing)
+- [Troubleshooting](#troubleshooting)
 
 ---
 
@@ -102,7 +103,8 @@ SDLC-Fundamental/
 
 ### Prerequisites
 
-- **Java 17+** — [Download](https://adoptium.net/)
+- **Java 17** — [Download Temurin 17](https://adoptium.net/)
+  > **Important:** This project targets Java 17. If you have Java 21 or later installed, it will also work, but ensure your `JAVA_HOME` points to a compatible JDK. Run `java -version` to confirm.
 - **Maven 3.8+** — [Download](https://maven.apache.org/download.cgi)
 - **Node.js 18+** — [Download](https://nodejs.org/)
 - **npm 9+** (bundled with Node.js)
@@ -173,6 +175,9 @@ npm run dev
 
 Open your browser at **http://localhost:5173**.
 
+> **H2 Console:** While the backend is running you can inspect the in-memory database at **http://localhost:8080/h2-console**.  
+> Use JDBC URL `jdbc:h2:mem:taskdb`, username `sa`, and leave the password blank.
+
 ### Production Build (Frontend)
 
 ```bash
@@ -231,13 +236,19 @@ Base URL: `http://localhost:8080/api/tasks`
 **Validation Error — `400 Bad Request`**
 ```json
 {
-  "title": "Title is required"
+  "status": 400,
+  "error": "Validation Failed",
+  "fieldErrors": {
+    "title": "Title is required"
+  }
 }
 ```
 
 **Not Found — `404 Not Found`**
 ```json
 {
+  "status": 404,
+  "error": "Task Not Found",
   "message": "Task not found with id: 99"
 }
 ```
@@ -344,9 +355,31 @@ mvn test -Dsurefire.useFile=false
 Test reports are generated in `backend/target/surefire-reports/`.
 
 Test coverage includes:
-- `TaskServiceTest` — Unit tests for business logic
-- `TaskControllerTest` — Integration tests for REST endpoints
+- `TaskServiceTest` — 8 unit tests for business logic (CRUD operations, status defaulting, exception paths)
+- `TaskControllerTest` — 11 integration tests for REST endpoints (HTTP status codes, JSON body, bean validation, field-level error shape)
 - `TaskManagerApplicationTests` — Spring context load test
+
+### Frontend Tests
+
+```bash
+cd frontend
+
+# Install dependencies (first time)
+npm install
+
+# Run all tests (watch mode)
+npm test
+
+# Run tests once (CI mode)
+npx vitest run
+
+# Run tests with coverage
+npm run test:coverage
+```
+
+Frontend tests use **Vitest** + **React Testing Library** and cover:
+- `TaskForm.test.tsx` — Form rendering (create vs edit), submit with valid data, trimmed title, all three validation rules (blank title, title > 100 chars, description > 500 chars), error clearing, and cancel actions
+- `TaskItem.test.tsx` — Task rendering, overdue badge logic, edit action, two-click delete confirmation pattern, and inline status change
 
 ### Frontend Linting
 
@@ -355,3 +388,78 @@ cd frontend
 
 # Run ESLint
 npm run lint
+
+```
+
+---
+
+## Troubleshooting
+
+### Backend won't start — port 8080 already in use
+
+```bash
+# Find and kill the process on port 8080 (macOS/Linux)
+lsof -ti:8080 | xargs kill -9
+
+# Windows PowerShell
+Stop-Process -Id (Get-NetTCPConnection -LocalPort 8080).OwningProcess -Force
+```
+
+Alternatively, change the port in `backend/src/main/resources/application.properties`:
+
+```properties
+server.port=8081
+```
+
+And update the Vite proxy in `frontend/vite.config.ts` to match.
+
+---
+
+### Frontend dev server won't start — port 5173 already in use
+
+```bash
+# macOS/Linux
+lsof -ti:5173 | xargs kill -9
+
+# Windows PowerShell
+Stop-Process -Id (Get-NetTCPConnection -LocalPort 5173).OwningProcess -Force
+```
+
+---
+
+### Java version mismatch
+
+This project requires **Java 17**. If you see compilation errors related to language features or sealed classes, check your active JDK:
+
+```bash
+java -version
+mvn -version   # shows the JDK Maven is using
+```
+
+If you have multiple JDKs installed, set `JAVA_HOME` explicitly:
+
+```bash
+# macOS/Linux (example path)
+export JAVA_HOME=$(/usr/libexec/java_home -v 17)
+
+# Windows (adjust path to your Temurin 17 installation)
+$env:JAVA_HOME = "C:\Program Files\Eclipse Adoptium\jdk-17.0.x.x-hotspot"
+```
+
+---
+
+### API calls return network errors in the browser
+
+Make sure the backend is running (`mvn spring-boot:run` in the `backend/` directory) **before** starting the frontend dev server. The Vite proxy requires the backend on `http://localhost:8080`.
+
+---
+
+### H2 console shows empty tables after a restart
+
+The H2 database is **in-memory**. All data is lost when the backend process stops. This is by design for development. To inspect the live data while the backend is running, open:
+
+```
+http://localhost:8080/h2-console
+```
+
+JDBC URL: `jdbc:h2:mem:taskdb` | Username: `sa` | Password: *(leave blank)*

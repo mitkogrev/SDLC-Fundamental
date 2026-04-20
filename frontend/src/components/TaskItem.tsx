@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { memo, useState } from 'react';
 import { Task, TaskStatus, STATUS_LABELS, STATUS_COLORS } from '../types/Task';
 
 interface TaskItemProps {
@@ -14,7 +14,7 @@ const LEFT_ACCENT: Record<TaskStatus, string> = {
   DONE:        'border-l-emerald-400',
 };
 
-export default function TaskItem({ task, onEdit, onDelete, onStatusChange }: TaskItemProps) {
+function TaskItem({ task, onEdit, onDelete, onStatusChange }: TaskItemProps) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
 
@@ -145,3 +145,5 @@ export default function TaskItem({ task, onEdit, onDelete, onStatusChange }: Tas
     </div>
   );
 }
+
+export default memo(TaskItem);

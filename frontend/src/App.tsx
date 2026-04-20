@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback } from 'react';
-import { Task, TaskFormData, TaskStatus } from './types/Task';
-import { taskService } from './services/taskService';
+import { useState } from 'react';
+import { Task, TaskFormData } from './types/Task';
+import { useTaskManager } from './hooks/useTaskManager';
 import TaskList from './components/TaskList';
 import TaskForm from './components/TaskForm';
 import SearchBar from './components/SearchBar';
@@ -15,32 +15,25 @@ const StatCard = ({ label, count, color }: { label: string; count: number; color
 );
 
 function App() {
-  const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [globalError, setGlobalError] = useState<string | null>(null);
+  const {
+    loading,
+    globalError,
+    searchQuery,
+    setSearchQuery,
+    statusFilter,
+    setStatusFilter,
+    sortBy,
+    setSortBy,
+    filteredTasks,
+    taskCounts,
+    handleCreateTask,
+    handleUpdateTask,
+    handleDelete,
+    handleStatusChange,
+  } = useTaskManager();
+
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showForm, setShowForm] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState<TaskStatus | 'ALL'>('ALL');
-  const [sortBy, setSortBy] = useState<'status' | 'dueDate' | 'none'>('none');
-
-  const fetchTasks = useCallback(async () => {
-    try {
-      setLoading(true);
-      setGlobalError(null);
-      const data = await taskService.getAllTasks();
-      setTasks(data);
-    } catch {
-      setGlobalError('Failed to load tasks. Make sure the backend server is running on port 8080.');
-      toast.error('Failed to load tasks');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchTasks();
-  }, [fetchTasks]);
 
   const openCreateForm = () => { setEditingTask(null); setShowForm(true); };
   const openEditForm = (task: Task) => { setEditingTask(task); setShowForm(true); };
@@ -48,67 +41,13 @@ function App() {
 
   const handleSubmit = async (formData: TaskFormData) => {
     if (editingTask) {
-      const updated = await taskService.updateTask(editingTask.id, formData);
-      setTasks(prev => prev.map(t => (t.id === updated.id ? updated : t)));
+      await handleUpdateTask(editingTask.id, formData);
       toast.success('Task updated!');
     } else {
-      const created = await taskService.createTask(formData);
-      setTasks(prev => [...prev, created]);
+      await handleCreateTask(formData);
       toast.success('Task created!');
     }
     closeForm();
-  };
-
-  const handleDelete = async (id: number) => {
-    try {
-      await taskService.deleteTask(id);
-      setTasks(prev => prev.filter(t => t.id !== id));
-      toast.success('Task deleted');
-    } catch {
-      toast.error('Failed to delete task');
-    }
-  };
-
-  const handleStatusChange = async (id: number, status: TaskStatus) => {
-    const task = tasks.find(t => t.id === id);
-    if (!task) return;
-    try {
-      const updated = await taskService.updateTask(id, { ...task, status });
-      setTasks(prev => prev.map(t => (t.id === id ? updated : t)));
-      toast.success('Status updated');
-    } catch {
-      toast.error('Failed to update status');
-    }
-  };
-
-  const filteredTasks = [...tasks]
-    .filter(task => {
-      const q = searchQuery.toLowerCase();
-      const matchesSearch =
-        task.title.toLowerCase().includes(q) ||
-        (task.description?.toLowerCase().includes(q) ?? false);
-      const matchesStatus = statusFilter === 'ALL' || task.status === statusFilter;
-      return matchesSearch && matchesStatus;
-    })
-    .sort((a, b) => {
-      if (sortBy === 'status') {
-        const order: Record<string, number> = { TODO: 0, IN_PROGRESS: 1, DONE: 2 };
-        return order[a.status] - order[b.status];
-      }
-      if (sortBy === 'dueDate') {
-        if (!a.dueDate && !b.dueDate) return 0;
-        if (!a.dueDate) return 1;
-        if (!b.dueDate) return -1;
-        return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
-      }
-      return 0;
-    });
-
-  const taskCounts = {
-    total: tasks.length,
-    todo: tasks.filter(t => t.status === 'TODO').length,
-    inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
-    done: tasks.filter(t => t.status === 'DONE').length,
   };
 
   return (

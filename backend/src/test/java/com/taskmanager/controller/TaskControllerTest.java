@@ -105,7 +105,21 @@ class TaskControllerTest {
     }
 
     @Test
-    @DisplayName("POST /api/tasks with blank title should return 400")
+    @DisplayName("GET /api/tasks/{id} should return all task fields including description and dueDate")
+    void getTaskById_ShouldReturnAllFields() throws Exception {
+        when(taskService.getTaskById(1L)).thenReturn(task);
+
+        mockMvc.perform(get("/api/tasks/1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(1))
+                .andExpect(jsonPath("$.title").value("Test Task"))
+                .andExpect(jsonPath("$.description").value("Test Description"))
+                .andExpect(jsonPath("$.status").value("TODO"))
+                .andExpect(jsonPath("$.dueDate").value("2025-12-31"));
+    }
+
+    @Test
+    @DisplayName("POST /api/tasks with blank title should return 400 with fieldErrors.title")
     void createTask_WithBlankTitle_ShouldReturn400() throws Exception {
         taskRequest.setTitle("");
 
@@ -113,7 +127,34 @@ class TaskControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(taskRequest)))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.error").value("Validation Failed"));
+                .andExpect(jsonPath("$.error").value("Validation Failed"))
+                .andExpect(jsonPath("$.fieldErrors.title").exists());
+    }
+
+    @Test
+    @DisplayName("POST /api/tasks with title exceeding 100 chars should return 400 with fieldErrors.title")
+    void createTask_WithTitleTooLong_ShouldReturn400WithFieldError() throws Exception {
+        taskRequest.setTitle("a".repeat(101));
+
+        mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(taskRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation Failed"))
+                .andExpect(jsonPath("$.fieldErrors.title").value("Title must not exceed 100 characters"));
+    }
+
+    @Test
+    @DisplayName("POST /api/tasks with description exceeding 500 chars should return 400 with fieldErrors.description")
+    void createTask_WithDescriptionTooLong_ShouldReturn400WithFieldError() throws Exception {
+        taskRequest.setDescription("a".repeat(501));
+
+        mockMvc.perform(post("/api/tasks")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(taskRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.error").value("Validation Failed"))
+                .andExpect(jsonPath("$.fieldErrors.description").value("Description must not exceed 500 characters"));
     }
 
     @Test

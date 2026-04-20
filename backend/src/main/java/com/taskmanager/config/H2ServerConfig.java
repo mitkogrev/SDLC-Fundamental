@@ -7,6 +7,7 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Profile;
 
 /**
  * Starts an H2 TCP server so the MCP server (running on port 8090) can connect
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Configuration;
  * caught and logged as a warning so the application context still starts.
  */
 @Configuration
+@Profile("dev")
 public class H2ServerConfig {
 
     private static final Logger log = LoggerFactory.getLogger(H2ServerConfig.class);
